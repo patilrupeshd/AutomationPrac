@@ -3,7 +3,7 @@ package runner;
 import io.cucumber.java.After;
 import io.cucumber.junit.Cucumber;
 import io.cucumber.junit.CucumberOptions;
-import utility.BrowserUtil;
+import utility.CommanUtil;
 
 import org.junit.runner.RunWith;
 import org.openqa.selenium.remote.BrowserType;
