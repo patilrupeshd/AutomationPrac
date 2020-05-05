@@ -7,14 +7,12 @@ import static com.codeborne.selenide.WebDriverRunner.getWebDriver;
 import static com.codeborne.selenide.WebDriverRunner.setWebDriver;
 
 import java.util.List;
-import java.util.logging.Level;
 
+import org.openqa.selenium.PageLoadStrategy;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.firefox.FirefoxDriver;
-import org.openqa.selenium.logging.LogType;
-import org.openqa.selenium.logging.LoggingPreferences;
 import org.openqa.selenium.remote.DesiredCapabilities;
 
 import com.codeborne.selenide.Condition;
@@ -25,7 +23,8 @@ import lombok.extern.slf4j.Slf4j;;
 @Slf4j
 public abstract class CommanUtil {
 
-	public final static String PAGE_TEXT = "//*[contains(text(),'%s')]";
+	public final static String PAGE_TEXT_CONTAINS = "//*[contains(text(),'%s')]";
+	public final static String PAGE_ELEMENT_ID = "//*[@id='%s']";
 
 	private final static String CHROME = "Chrome";
 	private final static String DEFAULT_BROWSER = "Chrome";
@@ -43,6 +42,7 @@ public abstract class CommanUtil {
 	public static final String OS_TYPE_WIN = "win";
 	public static final String OS_TYPE_LINUX = "nux";
 	public static final String USER_DIR = "user.dir";
+	public static final int WAITFOR_5000 = 5000;
 
 	static {
 		OS_TYPS = System.getProperty("os.name").toLowerCase();
@@ -52,12 +52,13 @@ public abstract class CommanUtil {
 
 	public static void openBrowser(String browserName) {
 		WebDriver driverInstance = null;
+
 		if (CHROME.equalsIgnoreCase(browserName)) {
 			driverInstance = getChromeBrowserInstance();
 		} else if (FF.equalsIgnoreCase(browserName)) {
 			driverInstance = getFireFoxInstance();
 		}
-		String urlToOpen = ReadProperties.getProperty(PROPERTIES_FILE_PATH + PROPERTY_FILE_NAME, APP_URL_PARA);
+		String urlToOpen = ReadProperties.getProperty(APP_URL_PARA);
 		setWebDriver(driverInstance);
 		driverInstance.get(urlToOpen);
 		driverInstance.manage().window().maximize();
@@ -65,11 +66,12 @@ public abstract class CommanUtil {
 		String size = driverInstance.manage().window().getSize().getWidth() + " : "
 				+ driverInstance.manage().window().getSize().getHeight();
 		System.out.println("Screen_Resolution " + size);
+
 	}
 
 	private static WebDriver getChromeBrowserInstance() {
-		LoggingPreferences logPref = new LoggingPreferences();
-		logPref.enable(LogType.PERFORMANCE, Level.ALL);
+		// LoggingPreferences logPref = new LoggingPreferences();
+		// logPref.enable(LogType.PERFORMANCE, Level.ALL);
 		String chromePath = getChromePath();
 		System.setProperty(CHROME_DRIVER, chromePath);
 		ChromeOptions options = new ChromeOptions();
@@ -81,8 +83,8 @@ public abstract class CommanUtil {
 //    	options.addArguments("--process-per-tab");
 //    	options.addArguments("--single-process");
 //    	options.setAcceptInsecureCerts(true);
-
-		WebDriver chromeDriverInstance = new ChromeDriver();
+		options.setPageLoadStrategy(PageLoadStrategy.EAGER);
+		WebDriver chromeDriverInstance = new ChromeDriver(options);
 		return chromeDriverInstance;
 	}
 
@@ -135,9 +137,6 @@ public abstract class CommanUtil {
 		WebDriver driverInstance = getWebDriver();
 		if (driverInstance != null) {
 			driverInstance.close();
-			forceSleep(2000);
-			// driverInstance.quit();
-			forceSleep(200);
 		}
 		System.err.println("Driver instance is closed");
 	}
@@ -173,7 +172,7 @@ public abstract class CommanUtil {
 
 	public boolean checkTextPresent(String textToSearch) {
 		String pageName = getPageName();
-		String textSearchXpath = getFormattedString(PAGE_TEXT, textToSearch);
+		String textSearchXpath = getFormattedString(PAGE_TEXT_CONTAINS, textToSearch);
 		List<SelenideElement> elementesWithGivenText = $$(byXpath(textSearchXpath));
 		boolean textPresent = elementesWithGivenText.size() > 0;
 		System.err.println("Text Present " + pageName + " : " + textToSearch + " : " + textPresent);
@@ -183,8 +182,8 @@ public abstract class CommanUtil {
 	public void waitUntilCondition(String locator, Condition condition) {
 		String pageName = getPageName();
 		try {
-			$(byXpath(locator)).waitUntil(condition, 10);
-			System.err.println("Wait till element found " + pageName + " : " + locator);
+			$(byXpath(locator)).waitUntil(condition, WAITFOR_5000);
+			System.out.println("Wait till element found " + pageName + " : " + locator);
 		} catch (Exception e) {
 			System.err.println("Element is not found " + locator + " " + condition + e.getMessage());
 		}
@@ -201,8 +200,58 @@ public abstract class CommanUtil {
 		}
 	}
 
-	public static void main(String[] args) {
-		System.err.println(getPageName());
+	public void click(String locator) {
+		String pageName = getPageName();
+		try {
+			$(byXpath(locator)).click();
+			System.out.println("click on : " + locator + " on this " + pageName);
+		} catch (Exception e) {
+			System.err
+					.println("Error while click on : " + locator + " on this " + pageName + " Cause " + e.getMessage());
+		}
+	}
+
+	public void enter(String locator, String textToEnter) {
+		String pageName = getPageName();
+		try {
+			$(byXpath(locator)).clear();
+			$(byXpath(locator)).setValue(textToEnter);
+			System.out.println("Value entered : " + locator + " : " + textToEnter + " on this " + pageName);
+		} catch (Exception e) {
+			System.err.println(
+					"Error while enter value : " + locator + " on this " + pageName + " Cause " + e.getMessage());
+		}
+	}
+
+	public boolean isDisplayed(String locator) {
+		String pageName = getPageName();
+		boolean flag = false;
+		try {
+			if ($(byXpath(locator)).isDisplayed()) {
+				flag = true;
+				System.out.println("Element displayed : " + locator + " on this " + pageName);
+			}
+		} catch (Exception e) {
+			System.out.println("Element is not displayed : " + locator + " on this " + pageName);
+		}
+		return flag;
+	}
+
+	public static String getPageTitle() {
+		return getWebDriver().getTitle();
+	}
+
+	public static String getTextOfElement(String locator) {
+		String pageName = getPageName();
+		String locatorText = "";
+		try {
+			locatorText = $(byXpath(locator)).getText();
+			System.out.println("Value of  :" + locator + " Is " + locatorText + " On Page " + pageName);
+		} catch (Exception e) {
+			System.err
+					.println("value of is not present :" + locator + " : " + pageName + " with msg " + e.getMessage());
+		}
+		return locatorText;
 	}
 
 }
